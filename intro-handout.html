@@ -1,0 +1,1569 @@
+<!DOCTYPE html>
+<html lang="en-US">
+<head>
+<meta charset="UTF-8" />
+<meta name="generator" content="LaTeX Lwarp package" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>CM22012 Advanced Programming</title>
+<link rel="stylesheet" type="text/css" href="lwarp.css" />
+
+<script>
+// Lwarp MathJax emulation code
+//
+// Based on code by Davide P. Cervone.
+// Equation numbering: https://github.com/mathjax/MathJax/issues/2427
+// Starred and ifnextchar macros: https://github.com/mathjax/MathJax/issues/2428
+// \left, \right delimiters: https://github.com/mathjax/MathJax/issues/2535
+//
+// Modified by Brian Dunn to adjust equation numbering and add subequations.
+//
+// LaTeX can use \seteqnumber{subequations?}{section}{number} before each equation.
+// subequations? is 0 usually, 1 if inside subequations.
+// section is a string printed as-is, or empty.
+// number is auto-incremented by MathJax between equations.
+//
+MathJax = {
+   subequations: "0",
+   section: "",
+   loader: {
+      load: ['[tex]/tagformat', '[tex]/textmacros'],
+   },
+   startup: {
+      ready() {
+        // These would be replaced by import commands if you wanted to make
+        // a proper extension.
+        const Configuration = MathJax._.input.tex.Configuration.Configuration;
+        const CommandMap = MathJax._.input.tex.SymbolMap.CommandMap;
+        const Macro = MathJax._.input.tex.Symbol.Macro;
+        const TexError = MathJax._.input.tex.TexError.default;
+        const ParseUtil = MathJax._.input.tex.ParseUtil.default;
+        const expandable = MathJax._.util.Options.expandable;
+
+        // Insert the replacement string into the TeX string, and check
+        // that there haven't been too many maxro substitutions (prevents
+        // infinite loops).
+        const useArgument = (parser, text) => {
+          parser.string = ParseUtil.addArgs(parser, text, parser.string.slice(parser.i));
+          parser.i = 0;
+          if (++parser.macroCount > parser.configuration.options.maxMacros) {
+            throw new TexError('MaxMacroSub1',
+            'MathJax maximum macro substitution count exceeded; ' +
+            'is there a recursive macro call?');
+          }
+        }
+
+        // Create the command map for:
+        //      \ifstar, \ifnextchar, \ifblank, \ifstrequal, \gsub, \seteqnumber
+        new CommandMap('Lwarp-macros', {
+           ifstar: 'IfstarFunction',
+           ifnextchar: 'IfnextcharFunction',
+           ifblank: 'IfblankFunction',
+           ifstrequal: 'IfstrequalFunction',
+           gsubstitute: 'GsubstituteFunction',
+           seteqnumber: 'SeteqnumberFunction'
+        }, {
+           // This function implements an ifstar macro.
+           IfstarFunction(parser, name) {
+              const resultstar = parser.GetArgument(name);
+              const resultnostar = parser.GetArgument(name);
+              const star = parser.GetStar();                 // true if there is a *
+              useArgument(parser, star ? resultstar : resultnostar);
+           },
+
+          // This function implements an ifnextchar macro.
+          IfnextcharFunction(parser, name) {
+             let whichchar = parser.GetArgument(name);
+             if (whichchar.match(/^(?:0x[0-9A-F]+|[0-9]+)$/i)) {
+               // $ syntax highlighting
+               whichchar = String.fromCodePoint(parseInt(whichchar));
+             }
+             const resultnextchar = parser.GetArgument(name);
+             const resultnotnextchar = parser.GetArgument(name);
+             const gotchar = (parser.GetNext() === whichchar);
+             useArgument(parser, gotchar ? resultnextchar : resultnotnextchar);
+          },
+
+          // This function implements an ifblank macro.
+          IfblankFunction(parser, name) {
+             const blankarg = parser.GetArgument(name);
+             const resultblank = parser.GetArgument(name);
+             const resultnotblank = parser.GetArgument(name);
+             const isblank = (blankarg.trim() == "");
+             useArgument(parser, isblank ? resultblank : resultnotblank);
+          },
+
+          // This function implements an ifstrequal macro.
+          IfstrequalFunction(parser, name) {
+             const strequalfirst = parser.GetArgument(name);
+             const strequalsecond = parser.GetArgument(name);
+             const resultequal = parser.GetArgument(name);
+             const resultnotequal = parser.GetArgument(name);
+             const isequal = (strequalfirst == strequalsecond);
+             useArgument(parser, isequal ? resultequal : resultnotequal);
+          },
+
+          // This function implements a gsub macro.
+          GsubstituteFunction(parser, name) {
+             const gsubfirst = parser.GetArgument(name);
+             const gsubsecond = parser.GetArgument(name);
+             const gsubthird = parser.GetArgument(name);
+             let gsubresult=gsubfirst.replace(gsubsecond, gsubthird);
+             useArgument(parser, gsubresult);
+          },
+
+          // This function modifies the equation numbers.
+          SeteqnumberFunction(parser, name) {
+              // Get the macro parameters
+              const star = parser.GetStar();                  // true if there is a *
+              const optBrackets = parser.GetBrackets(name);   // contents of optional brackets
+              const newsubequations = parser.GetArgument(name); // the subequations argument
+              const neweqsection = parser.GetArgument(name); // the eq section argument
+              const neweqnumber = parser.GetArgument(name);   // the eq number argument
+              MathJax.config.subequations=newsubequations ;   // a string with boolean meaning
+              MathJax.config.section=neweqsection ;           // a string with numeric meaning
+              parser.tags.counter = parser.tags.allCounter = neweqnumber ;
+          }
+
+        });
+
+        // Create the Lwarp-macros package
+        Configuration.create('Lwarp-macros', {
+          handler: {macro: ['Lwarp-macros']}
+        });
+
+        MathJax.startup.defaultReady();
+
+        // For forward references:
+        MathJax.startup.input[0].preFilters.add(({math}) => {
+          if (math.inputData.recompile){
+              MathJax.config.subequations = math.inputData.recompile.subequations;
+              MathJax.config.section = math.inputData.recompile.section;
+          }
+        });
+        MathJax.startup.input[0].postFilters.add(({math}) => {
+          if (math.inputData.recompile){
+              math.inputData.recompile.subequations = MathJax.config.subequations;
+              math.inputData.recompile.section = MathJax.config.section;
+          }
+        });
+
+          // For \left, \right with unicode-math:
+          const {DelimiterMap} = MathJax._.input.tex.SymbolMap;
+          const {Symbol} = MathJax._.input.tex.Symbol;
+          const {MapHandler} = MathJax._.input.tex.MapHandler;
+          const delimiter = MapHandler.getMap('delimiter');
+          delimiter.add('\\lBrack', new Symbol('\\lBrack', '\u27E6'));
+          delimiter.add('\\rBrack', new Symbol('\\rBrack', '\u27E7'));
+          delimiter.add('\\lAngle', new Symbol('\\lAngle', '\u27EA'));
+          delimiter.add('\\rAngle', new Symbol('\\rAngle', '\u27EB'));
+          delimiter.add('\\lbrbrak', new Symbol('\\lbrbrak', '\u2772'));
+          delimiter.add('\\rbrbrak', new Symbol('\\rbrbrak', '\u2773'));
+          delimiter.add('\\lbag', new Symbol('\\lbag', '\u27C5'));
+          delimiter.add('\\rbag', new Symbol('\\rbag', '\u27C6'));
+          delimiter.add('\\llparenthesis', new Symbol('\\llparenthesis', '\u2987'));
+          delimiter.add('\\rrparenthesis', new Symbol('\\rrparenthesis', '\u2988'));
+          delimiter.add('\\llangle', new Symbol('\\llangle', '\u2989'));
+          delimiter.add('\\rrangle', new Symbol('\\rrangle', '\u298A'));
+          delimiter.add('\\Lbrbrak', new Symbol('\\Lbrbrak', '\u27EC'));
+          delimiter.add('\\Rbrbrak', new Symbol('\\Rbrbrak', '\u27ED'));
+          delimiter.add('\\lBrace', new Symbol('\\lBrace', '\u2983'));
+          delimiter.add('\\rBrace', new Symbol('\\rBrace', '\u2984'));
+          delimiter.add('\\lParen', new Symbol('\\lParen', '\u2985'));
+          delimiter.add('\\rParen', new Symbol('\\rParen', '\u2986'));
+          delimiter.add('\\lbrackubar', new Symbol('\\lbrackubar', '\u298B'));
+          delimiter.add('\\rbrackubar', new Symbol('\\rbrackubar', '\u298C'));
+          delimiter.add('\\lbrackultick', new Symbol('\\lbrackultick', '\u298D'));
+          delimiter.add('\\rbracklrtick', new Symbol('\\rbracklrtick', '\u298E'));
+          delimiter.add('\\lbracklltick', new Symbol('\\lbracklltick', '\u298F'));
+          delimiter.add('\\rbrackurtick', new Symbol('\\rbrackurtick', '\u2990'));
+          delimiter.add('\\langledot', new Symbol('\\langledot', '\u2991'));
+          delimiter.add('\\rangledot', new Symbol('\\rangledot', '\u2992'));
+          delimiter.add('\\lparenless', new Symbol('\\lparenless', '\u2993'));
+          delimiter.add('\\rparengtr', new Symbol('\\rparengtr', '\u2994'));
+          delimiter.add('\\Lparengtr', new Symbol('\\Lparengtr', '\u2995'));
+          delimiter.add('\\Rparenless', new Symbol('\\Rparenless', '\u2996'));
+          delimiter.add('\\lblkbrbrak', new Symbol('\\lblkbrbrak', '\u2997'));
+          delimiter.add('\\rblkbrbrak', new Symbol('\\rblkbrbrak', '\u2998'));
+          delimiter.add('\\lvzigzag', new Symbol('\\lvzigzag', '\u29D8'));
+          delimiter.add('\\rvzigzag', new Symbol('\\rvzigzag', '\u29D9'));
+          delimiter.add('\\Lvzigzag', new Symbol('\\Lvzigzag', '\u29DA'));
+          delimiter.add('\\Rvzigzag', new Symbol('\\Rvzigzag', '\u29DB'));
+          delimiter.add('\\lcurvyangle', new Symbol('\\lcurvyangle', '\u29FC'));
+          delimiter.add('\\rcurvyangle', new Symbol('\\rcurvyangle', '\u29FD'));
+          delimiter.add('\\Vvert', new Symbol('\\Vvert', '\u2980'));
+    }     // ready
+  },      // startup
+
+  tex: {
+    packages: {'[+]': ['tagformat', 'Lwarp-macros', 'textmacros']},
+    tags: "ams",
+         tagformat: {
+             number: function (n) {
+                 if(MathJax.config.subequations==0)
+                      return(MathJax.config.section + n);
+                 else
+                      return(MathJax.config.section + String.fromCharCode(96+n));
+             },
+         },
+  }
+}
+</script>
+
+<script
+    id="MathJax-script"
+    src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-svg.js"
+></script>
+
+</head>
+<body>
+
+
+<div class="bodywithoutsidetoc">
+
+
+<main class="bodycontainer">
+
+
+<section class="textbody">
+
+<a id="intro-handout-autofile-0"></a>
+
+<!--MathJax customizations:-->
+<div data-nosnippet
+    style="display:none"
+>
+
+\(\newcommand{\footnotename}{footnote}\)
+
+\(\def \LWRfootnote {1}\)
+
+\(\newcommand {\footnote }[2][\LWRfootnote ]{{}^{\mathrm {#1}}}\)
+
+\(\newcommand {\footnotemark }[1][\LWRfootnote ]{{}^{\mathrm {#1}}}\)
+
+\(\let \LWRorighspace \hspace \)
+
+\(\renewcommand {\hspace }{\ifstar \LWRorighspace \LWRorighspace }\)
+
+\(\newcommand {\mathnormal }[1]{{#1}}\)
+
+\(\newcommand \ensuremath [1]{#1}\)
+
+\(\newcommand {\LWRframebox }[2][]{\fbox {#2}} \newcommand {\framebox }[1][]{\LWRframebox } \)
+
+\(\newcommand {\setlength }[2]{}\)
+
+\(\newcommand {\addtolength }[2]{}\)
+
+\(\newcommand {\setcounter }[2]{}\)
+
+\(\newcommand {\addtocounter }[2]{}\)
+
+\(\newcommand {\arabic }[1]{}\)
+
+\(\newcommand {\number }[1]{}\)
+
+\(\newcommand {\noalign }[1]{\text {#1}\notag \\}\)
+
+\(\newcommand {\cline }[1]{}\)
+
+\(\newcommand {\directlua }[1]{\text {(directlua)}}\)
+
+\(\newcommand {\luatexdirectlua }[1]{\text {(directlua)}}\)
+
+\(\newcommand {\protect }{}\)
+
+\(\def \LWRabsorbnumber #1 {}\)
+
+\(\def \LWRabsorbquotenumber &quot;#1 {}\)
+
+\(\newcommand {\LWRabsorboption }[1][]{}\)
+
+\(\newcommand {\LWRabsorbtwooptions }[1][]{\LWRabsorboption }\)
+
+\(\def \mathchar {\ifnextchar &quot;\LWRabsorbquotenumber \LWRabsorbnumber }\)
+
+\(\def \mathcode #1={\mathchar }\)
+
+\(\let \delcode \mathcode \)
+
+\(\let \delimiter \mathchar \)
+
+\(\def \oe {\unicode {x0153}}\)
+
+\(\def \OE {\unicode {x0152}}\)
+
+\(\def \ae {\unicode {x00E6}}\)
+
+\(\def \AE {\unicode {x00C6}}\)
+
+\(\def \aa {\unicode {x00E5}}\)
+
+\(\def \AA {\unicode {x00C5}}\)
+
+\(\def \o {\unicode {x00F8}}\)
+
+\(\def \O {\unicode {x00D8}}\)
+
+\(\def \l {\unicode {x0142}}\)
+
+\(\def \L {\unicode {x0141}}\)
+
+\(\def \ss {\unicode {x00DF}}\)
+
+\(\def \SS {\unicode {x1E9E}}\)
+
+\(\def \dag {\unicode {x2020}}\)
+
+\(\def \ddag {\unicode {x2021}}\)
+
+\(\def \P {\unicode {x00B6}}\)
+
+\(\def \copyright {\unicode {x00A9}}\)
+
+\(\def \pounds {\unicode {x00A3}}\)
+
+\(\let \LWRref \ref \)
+
+\(\renewcommand {\ref }{\ifstar \LWRref \LWRref }\)
+
+\( \newcommand {\multicolumn }[3]{#3}\)
+
+\(\require {textcomp}\)
+
+\(\newcommand {\intertext }[1]{\text {#1}\notag \\}\)
+
+\(\let \Hat \hat \)
+
+\(\let \Check \check \)
+
+\(\let \Tilde \tilde \)
+
+\(\let \Acute \acute \)
+
+\(\let \Grave \grave \)
+
+\(\let \Dot \dot \)
+
+\(\let \Ddot \ddot \)
+
+\(\let \Breve \breve \)
+
+\(\let \Bar \bar \)
+
+\(\let \Vec \vec \)
+
+</div>
+
+<a id="intro-handout-autopage-1"></a>
+
+<h1>CM22012 Advanced Programming</h1>
+<div class="subtitle">
+
+<p>
+Unit introduction
+</p>
+</div>
+
+
+<div class="author">
+
+
+<div class="oneauthor">
+
+<p>
+Julian Padget – j.a.padget@bath.ac.uk<br />
+handout pdf: <a href="https://people.bath.ac.uk/masjap/cm22012/intro-handout.pdf" target="_blank" >https://people.bath.ac.uk/masjap/cm22012/intro-handout.pdf</a><br />
+presentation pdf: <a href="https://people.bath.ac.uk/masjap/cm22012/intro-presentation.pdf" target="_blank" >https://people.bath.ac.uk/masjap/cm22012/intro-presentation.pdf</a>
+</p>
+</div>
+
+</div>
+
+
+<div class="titledate">
+
+</div>
+<!--
+...... section What is ‘‘advanced programming’’ ......
+-->
+<h4 id="autosec-2"><span class="sectionnumber">1&#x2003;</span>What is “advanced programming”</h4>
+<a id="intro-handout-autopage-2"></a>
+<div class="beamerframe">
+<!--
+......   paragraph Introduction ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-4">Introduction</span>
+<a id="intro-handout-autopage-4"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> The purpose of this Unit:
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> How to choose the right tool for the job
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Or&#x2026;
+</p>
+</li>
+</ul>
+
+<p>
+&nbsp;Why Java is not always the answerWhy Python is not always the answerWhy Haskell is not always the answerWhy insert favourite language here is not always the answer
+</p>
+
+<p>
+But sometimes is
+</p>
+
+<p>
+“Why are you teaching me how to use a screwdriver when I am an expert in using a hammer?” (paraphrase of a student question from a previous cohort)
+</p>
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Unfamiliar languages?     ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-6">Unfamiliar languages?</span>
+<a id="intro-handout-autopage-6"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> I may include examples of code, without much description, in a language you have not seen before. You should
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> not panic
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> take opportunity to read about that language
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> But, more importantly, you should be getting to the stage of seeing unfamiliar code and being able to have a good guess at what it does
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Some details may need researching, but the general idea should be clear
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Common concepts!    ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-8">Common concepts!</span>
+<a id="intro-handout-autopage-8"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> This is because there are many concepts that are shared by lots of computer languages
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> But there are some concepts that are not — these are the interesting ones!
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> And understanding the unusual stuff is one thing that distinguishes the really good programmers
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Orientation ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-10">Orientation</span>
+<a id="intro-handout-autopage-10"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> The main idea of this Unit is to show you many kinds of language and many kinds of programming, to equip you with the means to make the choice of the right tool for the job
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> So you don’t try to solve every problem with a Java- or Haskell- or Python-shaped or mallet
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Orientation ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-12">Orientation</span>
+<a id="intro-handout-autopage-12"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> But this Unit is not about teaching you new languages
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> It about exploring programming concepts
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Even if you choose to use a familiar old language, you can use it more effectively with knowledge of these concepts
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Would you hire a plumber whose only tool is a hammer?
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Orientation ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-14">Orientation</span>
+<a id="intro-handout-autopage-14"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Even if you are a stuck-in-the mud Java (for example) programmer and will use Java forevermore, there are many things in this unit you will benefit from knowing
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Some constructs (e.g., iterators, lambdas) that Java is adopting; also some concepts (e.g., automatic type inference; value semantics)
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Understanding (a) what they do (b) why they exist (c) why Java is adopting them (d) how to use them effectively; all these will make you a better Java programmer
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> And if you end up being a manager rather than a programmer, it helps to know what languages or features in languages are there to help weaker (\(= \text {cheaper}\)) programmers be more productive
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Orientation ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-16">Orientation</span>
+<a id="intro-handout-autopage-16"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Be prepared: some people get very wound up by some of the subjects that we will cover
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> A lot of flame wars on the Internet dealing with programming or programming languages are “programming language X is good” vs “programming language X is bad”
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> They really mean “X is good for what I do” vs “X is bad for what I do” but the “for what I do” is lost and so the arguments go on forever
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Introduction ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-18">Introduction</span>
+<a id="intro-handout-autopage-18"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> People can get stuck in the mind-set of the first language they learned, e.g., Java or Python these days
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> They try to approach all problems with the tools/concepts they learned in that language
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> When a new language comes along with a new approach, often their instinct is to say the new language is defective (as it doesn’t do things in the old way) and rubbish it and not try to learn the new ideas it presents
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Orientation ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-20">Orientation</span>
+<a id="intro-handout-autopage-20"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> one language is no more logical, natural or correct than any other
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> the syntax and the concept that the syntax represents are distinct<br />
+→ realisation that you can program in any language
+</p>
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">–</span> deeper, better understanding of the programs you read and write
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">–</span> capacity and capability to reason about WHAT you want to write
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">–</span> then translate it into HOW that language supports the concept<br />
+→ or does not \(\Rightarrow \) review problem, review solution<br />
+→ this is how you become a better programmer
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">–</span> makes learning another language more efficient
+</p>
+</li>
+</ul>
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> <em>“Programming is a skill acquired by practice and example rather than from books.”</em>Alan Turing
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Move to menti...   ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-22">Move to menti...</span>
+<a id="intro-handout-autopage-22"></a>
+
+</p>
+<div class="center">
+
+<p>
+<span
+    id="lateximage-intro-handout-1"
+    class="lateximagesource"
+><!--
+--><img
+     src="intro-handout-images/image-1.svg"
+     alt="(-tikz-&nbsp;diagram)"
+     style=""
+     class="lateximage"
+></span>
+</p>
+
+<p>
+or join at menti.com with code 6100 7491
+</p>
+</div>
+
+</div>
+<!--
+...... section About me ......
+-->
+<h4 id="autosec-26"><span class="sectionnumber">2&#x2003;</span>About me</h4>
+<a id="intro-handout-autopage-26"></a>
+<div class="beamerframe">
+<!--
+......   paragraph About me ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-28">About me</span>
+<a id="intro-handout-autopage-28"></a>
+
+</p>
+
+<p>
+<span
+    id="lateximage-intro-handout-2"
+    class="lateximagesource"
+><!--
+        safety-critical
+    systems engineering
+      model-based SE                                           diagnostics for
+  proving safety properties                                   immunotherapy
+       energy systems                                      functional proteomics
+
+
+                                    AI in general
+                                 multiagent systems
+                                value-aware reasoning
+
+
+        AI regulation                                    standards for AI
+   regulatory sandboxes                                 ISO - IEEE - CEN
+digital public infrastructure                           mostly bias related
+--><img
+     src="intro-handout-images/image-2.svg"
+     alt="(-tikz-&nbsp;diagram)"
+     style=""
+     class="lateximage"
+></span>
+</p>
+</div>
+<!--
+...... section Unit organization ......
+-->
+<h4 id="autosec-31"><span class="sectionnumber">3&#x2003;</span>Unit organization</h4>
+<a id="intro-handout-autopage-31"></a>
+<div class="beamerframe">
+<!--
+......   paragraph Lectures ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-33">Lectures</span>
+<a id="intro-handout-autopage-33"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Monday 17:15–18:05 4E3.10, wks 1-11,15
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Tuesday 11:15-12:05 4E3.10, wks 1-11,15
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Thursday 13:15-15:05 4E3.10, wks 3,5-11, guest lectures<br />
+→ no rooms available wks 1-2,4
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> 10 weeks of lectures = 2 x 10hrs
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> 5 credit unit = 100 hours
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> lectures + tutorials = 20 + [8,16] hours<br />
+→ guest lecture 1-2hrs
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> private study = 100-[28,36] = [64,72] = \(&gt;6\)hours/week<br />
+→ reading speeds vary
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> lectures are recorded (to Re:View/Panopto)<br />
+→ If you have a personal issue with being recorded, please sit in a place not covered by the lecture room camera
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Assessment ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-35">Assessment</span>
+<a id="intro-handout-autopage-35"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> CM22012: exam 100%<br />
+→ on lecture content and directed reading
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> CM22012 is a 5 credit unit, first taught AY24<br />
+→ this year is not going to be the same as last year<br />
+→ focus more like AY23 and before but adjusted for 5 credits
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> CM22012 derives from CM20318 (Comparative Programming Languages), 6 credits, AY21-23<br />
+→ CM20318 past papers more relevant than CM22012 AY24<br />
+→ CM20318 past papers available from library
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> ... prehistory
+</p>
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">–</span> CM20318 derives from CM20253 (Comparative Programming Languages), 3 credits, AY16-20
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">–</span> CM20253 derives from CM20214 (Advanced Programming Principles), 12 credits, AY??-15 item CM20214 derives from CM20168 (Programming Languages IV), 3 credits, AY09-??
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">–</span> CM20168 derives from QC5, 3 credits, AY96-??
+</p>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Sources ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-37">Sources</span>
+<a id="intro-handout-autopage-37"></a>
+
+</p>
+
+<p>
+<span
+    id="lateximage-intro-handout-3"
+    class="lateximagesource"
+><!--
+1
+--><img
+     src="intro-handout-images/image-3.svg"
+     alt="(-tikz-&nbsp;diagram)"
+     style=""
+     class="lateximage"
+></span>
+</p>
+<div class="minipage" style="vertical-align:bottom ; justify-content:flex-start ; width:264pt ; ">
+
+<a id="intro-handout-autopage-40"></a>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> slides: basis for notes and
+for discussion
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> topics: each slide set
+addresses a topic; material is grouped by topics and topic
+groups are scheduled by week
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> directed reading:
+supporting ex-
+aminable material for each topic, some selected from Mitchell (<a
+href="intro-handout.html#LWR-ht-cite.0@mitchell:2002">2002</a>):
+<a
+href="https://doi-org.ezproxy1.bath.ac.uk/10.1017/CBO9780511804175"
+target="_blank" >https://doi-
+org.ezproxy1.bath.ac.uk/10.1017/CBO9780511804175</a>
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> additional reading:
+supporting non-examinable material for unit→ please propose
+additions
+</p>
+</li>
+</ul>
+
+</div>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Sources ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-42">Sources</span>
+<a id="intro-handout-autopage-42"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> web-based material tends to be fairly accurate: Wikipedia is pretty good in this area
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> but, as always with Wikipedia, you should treat it as only the start and follow up the references
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Exercise Have a look at <a href="http://rosettacode.org/" target="_blank" >http://rosettacode.org/</a>
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> me. please use the Q&amp;A forum on moodle so everybody sees the answer<br />
+→ I am unlikely to respond outside 9-5, Mon-Fri<br />
+→ or direct email, if necessary
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> you. you can also answer each others’ questions
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Continuing Exercise read around the topics to fill in more detail
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Continuing Exercise when you come across a new (to you) language, write some code using it<br />
+→ can also involve installing software; also a useful exercise
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Unit description ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-44">Unit description</span>
+<a id="intro-handout-autopage-44"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> synopsis:
+</p>
+<blockquote>
+<p>
+You will explore the variety of styles of programming languages, recognise and understand the differences between them, and choose an appropriate style for a given problem. You will learn to debug, profile, and benchmark your programs.
+</p>
+</blockquote>
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> learning outcomes:<br />
+→ verbatim from unit catalogue
+</p>
+<ul class="enumerate" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">1.</span> recognise the various styles of programming language
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">2.</span> understand the differences between them
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">3.</span> choose an appropriate programming style for the problem in hand
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">4.</span> debug, profile and benchmark their programs<br />
+→ addition to LOs from CM20318
+</p>
+</li>
+</ul>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Content (from unit description) ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-47">Content (from unit description)</span>
+<a id="intro-handout-autopage-47"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> Programming paradigms and language families, <span
+     class="textcolor"
+     style="color:#0000FF"
+>for example</span> Functional, <span class="sout">Procedural</span>, Object Oriented, Logic, <span class="sout">Scripting</span>, Declarative [functional, logic], <span class="sout">Macro</span>, <span class="sout">Unstructured</span>, <span
+class="sout">Event Driven</span>, etc.
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Examples of languages from each style, with comparisons.
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Further choices that languages provide, e.g., application based languages; interpreted, bytecoded and compiled; parallel <span class="sout">and distributed</span>; OO prototyping, delegation, traits, class centred; managed,
+unmanaged and garbage collected; static typed, dynamic typed and untyped; call by value, reference, name, need, etc.
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> Debugging, profiling and benchmarking techniques.<br />
+→ addition to content from CM20318
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph 11 Topics over 10 weeks ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-49">11 Topics over 10 weeks</span>
+<a id="intro-handout-autopage-49"></a>
+
+</p>
+
+<ul class="enumerate" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">1.</span> history + standards
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">2.</span> object-oriented family
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">3.</span> functional languages and types
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">4.</span> logic programming
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">5.</span> parallel programming
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">6.</span> <span
+     class="fbox"
+     style="display:inline-block ; border:1pt solid #000000; padding:3pt ; color:#000000"
+>Consolidation week</span>
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">7.</span> bias-driven programming
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">8.</span> debugging + profiling
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">9.</span> writing safe code
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">10.</span> how does an interpreter work?
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">11.</span> how does a compiler work?
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">12.</span> storage management
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph A note about lecture notes ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-51">A note about lecture notes</span>
+<a id="intro-handout-autopage-51"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> these slides are reminders to me on what to say in lectures
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> they are often terse, and so are not the whole story and are not suitable to quote verbatim in an exam<br />
+→ do not rely purely on my notes for your revision
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> consider annotating the slides with points to follow up in private study
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> like every unit, you are expected to read around the subject for yourself<br />
+→ directed reading helps, but you should also do your own research
+</p>
+</li>
+</ul>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> you need to take your own notes, read, and participate<br />
+→ you don’t expect to get fit simply by paying to joining a gym&#x2026;
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Key points ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-53">Key points</span>
+<a id="intro-handout-autopage-53"></a>
+
+</p>
+
+<ul class="itemize" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker">•</span> concepts not syntax
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> computation not programming languages
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> develop your mental programming toolbox
+</p>
+
+</li>
+<li>
+
+<p>
+<span class="listmarker">•</span> know where to go to find out more when you need to
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Bibliography ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-55">Bibliography</span>
+<a id="intro-handout-autopage-55"></a>
+
+</p>
+<!--
+...... section References ......
+-->
+<h4 id="autosec-56">References</h4>
+<a id="intro-handout-autopage-56"></a>
+
+
+<ul class="list" style="list-style-type:none">
+
+<li>
+<p>
+<a id="LWR-ht-cite.0@mitchell:2002"></a>Mitchell, John C. (2002). <em>Concepts in Programming Languages</em>. ISBN 0-521-78098-5 (print) 9780511804175 (online). Cambridge University Press. <span class="textsc">doi</span>: <a
+href="https://doi.org/10.1017/CBO9780511804175" target="_blank" >10.1017/CBO9780511804175</a>.
+</p>
+</li>
+</ul>
+
+</div>
+<div class="beamerframe">
+<!--
+......   paragraph Source credits ......
+-->
+
+
+<p>
+<span class="paragraph" id="autosec-58">Source credits</span>
+<a id="intro-handout-autopage-58"></a>
+
+</p>
+<!--
+...... section Notes ......
+-->
+<h4 id="autosec-59">Notes</h4>
+<a id="intro-handout-autopage-59"></a>
+
+
+<ul class="list" style="list-style-type:none">
+
+<li>
+<p>
+<span class="listmarker"><span style="width:8.49792pt; display:inline-block"><!----></span>1.</span> Downloaded from <a href="https://www.amazon.co.uk/Concepts-Programming-Languages-John-Mitchell/dp/0521780985" target="_blank"
+>https://www.amazon.co.uk/Concepts-Programming-Languages-John-Mitchell/dp/0521780985</a>
+</p>
+</li>
+</ul>
+
+</div>
+
+<a id="intro-handout-autofile-last"></a>
+</section>
+
+</main>
+
+</div>
+
+</body>
+</html>
